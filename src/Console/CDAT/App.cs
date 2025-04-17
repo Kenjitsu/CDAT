@@ -1,9 +1,17 @@
-﻿namespace CDAT.console;
+﻿using CDAT.core.Interfaces;
+
+namespace CDAT.console;
 public class App
 {
+    private readonly IProcessService _processService;
+
+    public App(IProcessService processService)
+    {
+        _processService = processService;
+    }
+
     public async Task StartAsync(string[] args)
     {
-        await Task.Delay(200);
-        Console.WriteLine("Hola mundo!");
+        await _processService.ProcessAsync();
     }
 }

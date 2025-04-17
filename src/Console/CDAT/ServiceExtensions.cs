@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using CDAT.core;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -16,7 +17,7 @@ public static class ServiceExtensions
         })
             .ConfigureServices((_, services) =>
             {
-                //services.AddCoreServices(args);
+                services.AddCoreServices();
                 //services.AddInfrastuctureServices();
                 services.AddSingleton<App>();
             });
