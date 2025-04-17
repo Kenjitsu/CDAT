@@ -10,7 +10,6 @@ var services = scope.ServiceProvider;
 try
 {
     //_log.Debug("La aplicación se ha iniciado...");
-    Console.WriteLine("La aplicación se ha iniciado..");
     await services.GetRequiredService<App>().StartAsync(args);
 }
 catch (Exception ex)
