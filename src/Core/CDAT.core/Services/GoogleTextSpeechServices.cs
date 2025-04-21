@@ -71,7 +71,16 @@ public class GoogleTextSpeechServices : IGoogleTextSpeechServices
 
     private async Task<(int successes, int failures)> GetTextToSpeechAudio()
     {
-        var (records, errors) = _cSVManagement.GetValuesFromCSV(googleTextToSpeechConfig.CSVFilePath!);
+        var (records, errors) = await _cSVManagement.GetValuesFromCSV(googleTextToSpeechConfig.CSVFilePath!);
+
+        if (errors.Count != 0)
+        {
+            foreach (var error in errors)
+            {
+                AnsiConsole.MarkupLine("[yellow]{0}.[/]", error);
+            }
+        }
+
         bool continueProcess = _userPrompts.ConfirmUserChioce($"Se encontraron [yellow]{records.Count}[/] registros a procesar y se encontraron [yellow]{errors.Count}[/] que no fue posible leer. ¿Desea continuar?");
 
         int succecess = 0;
@@ -81,11 +90,19 @@ public class GoogleTextSpeechServices : IGoogleTextSpeechServices
         {
             var executionResults = await AnsiConsole
                 .Progress()
+                .Columns(
+                [
+                    new TaskDescriptionColumn(),    // Task description
+                    new ProgressBarColumn(),        // Progress bar
+                    new PercentageColumn(),         // Percentage
+                    new RemainingTimeColumn(),      // Remaining time
+                    new SpinnerColumn(),            // Spinner
+                    new DownloadedColumn(),         // Downloaded
+                    new TransferSpeedColumn(),      // Transfer speed
+                ])
                 .StartAsync(async ctx =>
                 {
                     var executionTask = ctx.AddTask("Convirtiendo texto a audio...", maxValue: records.Count);
-
-                   
 
                     foreach (var record in records)
                     {
@@ -93,13 +110,17 @@ public class GoogleTextSpeechServices : IGoogleTextSpeechServices
                         GoogleTextToSpeechApiRequest request = GetRequestForGoogleApi(record);
                         var response = await _googleApiServices.TextToSpeechApi(request, googleTextToSpeechConfig);
 
-                        var audioBase64 = response.AudioContent;
-                        byte[] audioBytes = Convert.FromBase64String(audioBase64!);
-                        File.WriteAllBytes($"{googleTextToSpeechConfig.OutputPathAudioFiles!}{record.AudioIdentifier}.wav", audioBytes);
-
                         if (response.IsSuccessfulResponse)
                         {
                             succecess++;
+                            var audioBase64 = response.AudioContent;
+                            byte[] audioBytes = Convert.FromBase64String(audioBase64!);
+                            File.WriteAllBytes($"{googleTextToSpeechConfig.OutputPathAudioFiles!}{record.AudioIdentifier}.wav", audioBytes);
+                        }
+                        else if(!string.IsNullOrWhiteSpace(response.Error))
+                        {
+                            AnsiConsole.MarkupLine($"Respuesta del servicio de google: [red]{response.Error}[/], por favor validar configuraciones o estado de los servicios");
+                            break;
                         }
                         else
                         {
@@ -114,7 +135,7 @@ public class GoogleTextSpeechServices : IGoogleTextSpeechServices
                 });
         }
 
-       return (succecess, failures);
+        return (succecess, failures);
     }
 
     private void Configurations()

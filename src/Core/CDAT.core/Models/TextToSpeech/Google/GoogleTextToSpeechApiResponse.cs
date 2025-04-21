@@ -7,4 +7,6 @@ public class GoogleTextToSpeechApiResponse
     public string? AudioContent { get; set; }
 
     public bool IsSuccessfulResponse { get; set; }
+
+    public string Error { get; set; } = string.Empty;
 }

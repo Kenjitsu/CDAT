@@ -13,6 +13,7 @@ public class GoogleApiServices : IGoogleApiServices
 {
     public async Task<GoogleTextToSpeechApiResponse> TextToSpeechApi(GoogleTextToSpeechApiRequest bodyRequest, GoogleTextToSpeechConfig config)
     {
+        RestResponse response = new();
         try
         {
             var client = new RestClient();
@@ -22,7 +23,7 @@ public class GoogleApiServices : IGoogleApiServices
                 .AddJsonBody(bodyRequest);
 
             //AnsiConsole.WriteLine("request: {0}", JsonSerializer.Serialize(bodyRequest));
-            var response = await client.PostAsync(request);
+            response = await client.PostAsync(request);
 
             if (response.IsSuccessStatusCode && response.Content != null)
             {
@@ -38,7 +39,7 @@ public class GoogleApiServices : IGoogleApiServices
         catch (Exception ex) 
         {
             AnsiConsole.WriteException(ex);
-            return new GoogleTextToSpeechApiResponse() { IsSuccessfulResponse = false };
+            return new GoogleTextToSpeechApiResponse() { IsSuccessfulResponse = false, Error = ex.Message };
         }
     }
 }
