@@ -10,11 +10,6 @@ public class CSVManagement : ICSVManagement
         var errorLines = new List<string>();
         string[] lines = File.ReadAllLines(csvFilePath);
 
-        if(lines.Length > 0)
-        {
-            lines = lines.Skip(1).ToArray();
-        }
-
         foreach (var line in lines)
         {
             var columns = line.Split(';');

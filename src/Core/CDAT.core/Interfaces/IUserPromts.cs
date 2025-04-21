@@ -11,4 +11,6 @@ public interface IUserPromts
     bool ConfirmUserChioce(string message);
     Task ShowSpinnerAsync(Func<StatusContext, Task> actionToExecute, string message);
     void GenerateTable<T>(T obj, string title = "Detalles del Objeto") where T : class;
+    Task ShowProgressAsync(string title, Func<ProgressContext, Task> action, int? totalSteps = null);
+    void RenderBarChartWithResult((int success, int failures) result, string label);
 }

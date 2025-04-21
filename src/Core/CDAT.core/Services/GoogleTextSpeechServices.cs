@@ -2,10 +2,14 @@
 using CDAT.core.Helpers;
 using CDAT.core.Interfaces;
 using CDAT.core.Interfaces.Infrastructure;
+using CDAT.core.Models.TextToSpeech;
+using CDAT.core.Models.TextToSpeech.Google;
 using CDAT.core.Models.TextToSpeech.Google.Configurations;
 using Microsoft.Extensions.Configuration;
 using Spectre.Console;
 using System.Reflection;
+using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace CDAT.core.Services;
 public class GoogleTextSpeechServices : IGoogleTextSpeechServices
@@ -15,6 +19,7 @@ public class GoogleTextSpeechServices : IGoogleTextSpeechServices
     private readonly IUserPromts _userPrompts;
     private readonly IConfiguration _configuration;
     public GoogleTextToSpeechConfig googleTextToSpeechConfig;
+
 
     public GoogleTextSpeechServices(IGoogleApiServices googleApiServices, ICSVManagement cSVManagement, IConfiguration configuration, IUserPromts userPrompts)
     {
@@ -26,7 +31,7 @@ public class GoogleTextSpeechServices : IGoogleTextSpeechServices
         googleTextToSpeechConfig = configuration.GetSection("GoogleTextToSpeechConfig").Get<GoogleTextToSpeechConfig>()!;
     }
 
-    public void ExecuteAsync(GoogleTextToSpeechOptions options)
+    public async Task ExecuteAsync(GoogleTextToSpeechOptions options)
     {
 
         switch (options)
@@ -37,12 +42,79 @@ public class GoogleTextSpeechServices : IGoogleTextSpeechServices
             case GoogleTextToSpeechOptions.Configurations:
                 Configurations();
                 break;
+            case GoogleTextToSpeechOptions.ExecuteProcess:
+                var results = await GetTextToSpeechAudio();
+                _userPrompts.RenderBarChartWithResult(results, "Resultados de textos procesados");
+                break;
         }
     }
 
-    private void GetTextToSpeechAudio()
+    //private async IAsyncEnumerable<GoogleTextToSpeechApiResponse> GetTextToSpeechAudio()
+    //{
+    //    var (records, errors) = _cSVManagement.GetValuesFromCSV(googleTextToSpeechConfig.CSVFilePath!);
+    //    bool continueProcess = _userPrompts.ConfirmUserChioce($"Se encontraron [yellow]{records.Count}[/] registros a procesar y se encontraron [yellow]{errors.Count}[/] que no fue posible leer. ¿Desea continuar?");
+    //    if (continueProcess)
+    //    {
+    //        foreach (var record in records) 
+    //        {
+    //            await Task.Delay(TimeSpan.FromMilliseconds(350));
+    //            GoogleTextToSpeechApiRequest request = GetRequestForGoogleApi(record);
+    //            var response = await _googleApiServices.TextToSpeechApi(request, googleTextToSpeechConfig);
+
+    //            if (response != null)
+    //            {
+    //                yield return response;
+    //            }
+    //        }
+    //    }
+    //}
+
+    private async Task<(int successes, int failures)> GetTextToSpeechAudio()
     {
-        throw new NotImplementedException();
+        var (records, errors) = _cSVManagement.GetValuesFromCSV(googleTextToSpeechConfig.CSVFilePath!);
+        bool continueProcess = _userPrompts.ConfirmUserChioce($"Se encontraron [yellow]{records.Count}[/] registros a procesar y se encontraron [yellow]{errors.Count}[/] que no fue posible leer. ¿Desea continuar?");
+
+        int succecess = 0;
+        int failures = 0;
+
+        if (continueProcess)
+        {
+            var executionResults = await AnsiConsole
+                .Progress()
+                .StartAsync(async ctx =>
+                {
+                    var executionTask = ctx.AddTask("Convirtiendo texto a audio...", maxValue: records.Count);
+
+                   
+
+                    foreach (var record in records)
+                    {
+                        await Task.Delay(TimeSpan.FromMilliseconds(350));
+                        GoogleTextToSpeechApiRequest request = GetRequestForGoogleApi(record);
+                        var response = await _googleApiServices.TextToSpeechApi(request, googleTextToSpeechConfig);
+
+                        var audioBase64 = response.AudioContent;
+                        byte[] audioBytes = Convert.FromBase64String(audioBase64!);
+                        File.WriteAllBytes($"{googleTextToSpeechConfig.OutputPathAudioFiles!}{record.AudioIdentifier}.wav", audioBytes);
+
+                        if (response.IsSuccessfulResponse)
+                        {
+                            succecess++;
+                        }
+                        else
+                        {
+                            failures++;
+                        }
+
+                        executionTask.Increment(1);
+                    }
+
+                    return (succecess, failures);
+
+                });
+        }
+
+       return (succecess, failures);
     }
 
     private void Configurations()
@@ -109,7 +181,7 @@ public class GoogleTextSpeechServices : IGoogleTextSpeechServices
 
         var csvInfo = instructionsTree.AddNode("Generar un CSV delimitado por comas con el siguiente formato de ejemplo:");
         csvInfo.AddNodes("IdentificadorDAudio;Texto a convertir en voz con el api de google");
-        instructionsTree.AddNode("Definir la ruta deñ archivo CSV y configurarla en el archivo appsettings.json o en la opción de configuraciones");
+        instructionsTree.AddNode("Definir la ruta del archivo CSV y configurarla en el archivo appsettings.json o en la opción de configuraciones");
         instructionsTree.AddNode("Definir la ruta donde se alojaran los audios creados y configurarla en el archivo appsettings.json o en la opción de configuraciones");
         var bearerInfo = instructionsTree.AddNode("Obtener el bearer token del consumo del api en la página de google:");
         bearerInfo.AddNode("Dirigirse a la url del servicio de google");
@@ -122,5 +194,17 @@ public class GoogleTextSpeechServices : IGoogleTextSpeechServices
         instructionsTree.AddNode("Una vez confirmados los pasos anteriores, ejecutar el proceso y esperar los resultados.");
 
         AnsiConsole.Write(instructionsTree);
+    }
+
+    private GoogleTextToSpeechApiRequest GetRequestForGoogleApi(CSVFileFormat record)
+    {
+        var request = new GoogleTextToSpeechApiRequest()
+        {
+            Input = new Input() { Text = record.TextToConvert! },
+            AudioConfig = new AudioConfig(),
+            Voice = new Voice(),
+        };
+
+        return request;
     }
 }

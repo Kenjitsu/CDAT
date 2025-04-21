@@ -5,4 +5,6 @@ public class GoogleTextToSpeechApiResponse
 {
     [JsonPropertyName("audioContent")]
     public string? AudioContent { get; set; }
+
+    public bool IsSuccessfulResponse { get; set; }
 }

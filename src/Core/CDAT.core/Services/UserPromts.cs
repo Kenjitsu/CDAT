@@ -108,4 +108,25 @@ public class UserPromts : IUserPromts
 
         AnsiConsole.Write(table);
     }
+
+    public async Task ShowProgressAsync(string title, Func<ProgressContext, Task> action, int? totalSteps = null)
+    {
+        await AnsiConsole.Progress()
+            .StartAsync(async ctx =>
+            {
+                var progress = ctx.AddTask($"[green]{title}[/]", maxValue: totalSteps ?? 100);
+
+                await action(ctx);
+            });
+    }
+
+    public void RenderBarChartWithResult((int success, int failures) result, string label)
+    {
+        AnsiConsole.Write(
+            new BarChart()
+            .Label(label)
+            .AddItem("Exitos", result.success, Color.Green)
+            .AddItem("Fallos", result.failures, Color.Red));
+
+    }
 }

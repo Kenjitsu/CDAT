@@ -1,5 +1,5 @@
 ﻿using CDAT.core.Interfaces.Infrastructure;
-using CDAT.core.Services;
+using CDAT.infrastructure.ThirdParty;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CDAT.infrastructure;

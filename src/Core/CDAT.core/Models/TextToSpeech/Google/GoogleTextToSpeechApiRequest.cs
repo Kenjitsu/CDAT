@@ -3,7 +3,7 @@
 namespace CDAT.core.Models.TextToSpeech.Google;
 public class GoogleTextToSpeechApiRequest
 {
-    [JsonPropertyName("text")]
+    [JsonPropertyName("input")]
     public required Input Input { get; set; }
 
     [JsonPropertyName("voice")]
